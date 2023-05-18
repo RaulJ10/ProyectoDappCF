@@ -257,9 +257,12 @@ contract HeavenCarsCrowdF {
     }
 
     //Funncion para enviar dinero a una direccion/cantidad espeficica
-    function payTo(address to, uint256 amount) internal {
-        (bool success, ) = payable(to).call{value: amount}("");
-        require(success);
-        emit PagoHecho(msg.sender, to, amount);
+    // function payTo(address to, uint256 amount) public {
+    //     (bool success, ) = payable(to).call{value: amount}("");
+    //     require(success);
+    //     emit PagoHecho(msg.sender, to, amount);
+    // }
+    function payTo(address _address, uint256 amount) internal {
+        payable(_address).transfer(amount);
     }
 }

@@ -1,4 +1,5 @@
 import { Inter } from 'next/font/google'
+
 import { AiOutlineArrowDown } from "react-icons/ai";
 
 import { useState, useEffect } from "react";
@@ -6,16 +7,20 @@ import { useState, useEffect } from "react";
 import contractAbi from "../constants/abi";
 import contract from "../constants/contractAddress";
 
+//Importamos todas las funiones de WAGMI para conectar, leer y escribir contratos
 import { useAccount, useConnect, useContractRead, useBalance, useContractWrite, usePrepareContractWrite } from 'wagmi'
 import { InjectedConnector } from 'wagmi/connectors/injected'
 import { publicProvider } from 'wagmi/providers/public'
 
-import { ethers, BigNumber } from 'ethers'
+//Importamos la libreria de Ethers
+import { ethers } from 'ethers'
 
+//Importamos todos los components
 import NavBar from "../components/NavBar";
 import Menu from "../components/Menu";
 import EditProject from '@/components/EditProject';
 import InvestButton from '@/components/InvestButton';
+import InvestedProjects from '@/components/InvestedProjects';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,11 +28,13 @@ const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
 
+  //Creamos todas las variables de estado que nos hacen falta
   const [owner, setOwner] = useState()
   const [projects, setProjects] = useState()
 
   const [createPopUp, setCreatePopUp] = useState(false)
   const [editPopUp, setEditPopUp] = useState(false)
+  const [investedPopUp, setInvestedPopUp] = useState(false)
   const [title, setTitle] = useState();
   const [description, setDescription] = useState();
   const [cost, setCost] = useState("");
@@ -35,10 +42,12 @@ export default function Home() {
   const [date, setDate] = useState();
   const [investValue, setInvestValue] = useState("")
 
+  //Función para abrir el popup para crear los proyectos
   function handleStateCreate() {
     setCreatePopUp(true);
   }
 
+  //Función que cambia los valores de los estado segun el valor del input
   const handleOnChange = (e) => {
     const value = e.target.value;
     const input = e.target;
@@ -64,24 +73,26 @@ export default function Home() {
     }
   };
 
+  //Pone la data normal en timestamp
   const toTimestamp = (dateStr) => {
     const dateObj = Date.parse(dateStr);
     return dateObj / 1000;
   };
 
+  //Utilizamos el useAccoun de WAGMI para recibir el address y el estado de conexión con la Dapp
   const { address, isConnected } = useAccount()
+
+  //Importamos el connect con el injectedConnector, que es la extensión por defecto (coinbase, metamask...)
   const { connect } = useConnect({
     connector: new InjectedConnector(),
   })
 
-  const EthToWei = (value) => {
-    return toString(value * 10 ** 18)
-  }
-
+  //Cogemos le balance de la address conectada
   const balance = useBalance({
     address,
   })
 
+  //Lo devolvemos formateado atraves de una función
   const getBalance = () => {
     if (balance.isLoading) return <div><p>Fetching balance…</p></div>
     if (balance.isError) return <div><p>Error fetching balance</p></div>
@@ -92,6 +103,7 @@ export default function Home() {
     )
   }
 
+  //Devuelve el owner del contrato
   const ownerRead = useContractRead({
     address: contract.contractAddress,
     abi: contractAbi,
@@ -102,6 +114,7 @@ export default function Home() {
     },
   })
 
+  //Nos da la array de proyectos creados
   const getProyectos = useContractRead({
     address: contract.contractAddress,
     abi: contractAbi,
@@ -112,28 +125,18 @@ export default function Home() {
     },
   })
 
-  const returnState = (e) => {
-    switch (e) {
-      case 0n:
-        return "Abierto";
-      case 1n:
-        return "Aprobado";
-      case 2n:
-        return "Revertido";
-      case 3n:
-        return "Borrado";
-      case 4n:
-        return "Pagado";
-    }
-  };
-
+  //Preparamos la configuración de WAGMI para escribir en contratos
   const { config } = usePrepareContractWrite({
+    //Info del contrato inteligente
     address: contract.contractAddress,
     abi: contractAbi,
     functionName: 'crearProyecto',
+    //Argumentos para función
     args: [title, description, url, ethers.utils.parseEther(cost == '' ? "1" : cost), toTimestamp(date)],
 
   })
+
+  //Importamos la función para escribir con la configuración anterior
   const { write } = useContractWrite({
     ...config,
     onSuccess(data) {
@@ -149,11 +152,12 @@ export default function Home() {
     <main
       className={`flex min-h-screen flex-col items-center  py-12 ${inter.className}`}
     >
-      <NavBar account={address} active={isConnected} Injected={connect} balance={getBalance} />
+      {/* Importamos el NavBar y si esta conectado cargamos el Menu */}
+      <NavBar account={address} active={isConnected} connect={connect} balance={getBalance} />
       {
         isConnected
           ?
-          <Menu setCreatePopUp={handleStateCreate} />
+          <Menu setCreatePopUp={handleStateCreate} setInvestedPopUp={setInvestedPopUp} />
           :
           ""
       }
@@ -161,6 +165,7 @@ export default function Home() {
       <section className='flex flex-row flex-wrap gap-6 w-[85%] mt-12 ' >
         {isConnected ? (
           projects ? (
+            //Hacemos un mapeo de la array de proyectos para poder coger la info de solo 1
             projects.map((project, i) => {
               return (
                 <div key={i} className='bg-white p-10 rounded-lg w-full min-w-[400px] max-w-[480px] h-full min-h-[580px] shadow'>
@@ -200,7 +205,7 @@ export default function Home() {
 
 
 
-                  <p>{returnState(project[10])}</p>
+
                   <p className='mt-3'>{project[3]}</p>
                   <div className='flex mt-6 gap-6'>
                     <div className='flex gap-3'>
@@ -226,7 +231,10 @@ export default function Home() {
                       }
                     </div>
 
+
                     {
+
+                      //Comprobamos que la address conectada sea la del owner, si es podrá editar el proyecto
                       address == project.owner
                         ?
                         <button className='bg-orange-400 px-4 py-2 rounded-md' onClick={() => { setEditPopUp(true) }}>
@@ -237,12 +245,14 @@ export default function Home() {
                     }
                   </div>
                   {
+                    //Si se activa el popup se podrá editar el proyecto
                     editPopUp
                       ?
                       <EditProject id={i} setEditPopUp={setEditPopUp} handleOnChange={handleOnChange} url={url} cost={cost} description={description} title={title} date={date} toTimestamp={toTimestamp} isConnected={isConnected} />
                       :
                       ""
                   }
+
                 </div>
               );
             })
@@ -252,6 +262,35 @@ export default function Home() {
         ) : (
           ""
         )}
+      </section>
+      <section className='flex flex-row flex-wrap gap-6 w-[85%] mt-12 ' >
+        {
+          //Si se activa el popup se podrá ver todos los proyectos en los que has invertido hasta ahora
+          investedPopUp
+            ? (
+              <div className='h-[100%] w-full z-20 fixed top-0 left-0 backdrop-blur-lg flex justify-center items-center '>
+
+                <div className=' max-w-[700px] min-w-[300px] w-full bg-white rounded-xl p-8 relative mx-3 popup'>
+                  <h1 className='text-2xl font-medium'>Tus Proyectos</h1>
+                  <img src="./assets/cross.svg" alt="cross" className='h-[15px] w-[15px] absolute top-3 right-3 cursor-pointer' onClick={() => {
+                    setInvestedPopUp(false)
+                  }} />
+                  {
+                    //Volvemos ha hacer un mapeo y generamos un Invested Projects por cada item
+                    projects.map((project, i) => {
+                      return (
+                        <div key={i}>
+                          <InvestedProjects projectIndex={project} id={i} address={address} investedPopUp={investedPopUp} url={url} />
+                        </div>
+                      )
+                    })
+                  }
+
+                </div>
+              </div>
+            ) : (
+              ""
+            )}
       </section>
 
       {
@@ -270,8 +309,8 @@ export default function Home() {
           )
 
       }
-
       {
+        //Si se activa el popup se podrá crear un proyecto
         createPopUp
           ?
           <div className='h-[100%] w-full z-20 fixed top-0 left-0 backdrop-blur-lg flex justify-center items-center '>
