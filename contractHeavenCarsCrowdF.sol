@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.19;
 
+//0x4341160AA91827AA660729f76decf9A5318441F1
+
 contract HeavenCarsCrowdF {
     //Direccion del owner
     address public owner;
@@ -200,7 +202,6 @@ contract HeavenCarsCrowdF {
 
     //Funcion para pagar
     function performPayout(uint id) internal {
-        require(proyectos[id].owner == msg.sender);
         uint invertido = proyectos[id].invertido;
         uint tax = (invertido * projectTax) / 100;
 
